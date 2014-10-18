@@ -1,0 +1,23 @@
+erlang-p1-tls (0.2014.07.10-1) unstable; urgency=low
+
+  * Imported Upstream version 0.2014.07.10
+
+ -- Philipp Huebner <debalance@debian.org>  Thu, 28 Aug 2014 10:07:36 +0200
+
+erlang-p1-tls (0.2014.05.06-1) unstable; urgency=medium
+
+  * Imported Upstream version 0.2014.05.06
+
+ -- Philipp Huebner <debalance@debian.org>  Wed, 14 May 2014 10:28:39 +0200
+
+erlang-p1-tls (0.2014.04.15-2) unstable; urgency=medium
+
+  * Add correct Erlang dependencies
+
+ -- Philipp Huebner <debalance@debian.org>  Sat, 10 May 2014 12:50:10 +0200
+
+erlang-p1-tls (0.2014.04.15-1) unstable; urgency=low
+
+  * Initial release, see #744885 for background
+
+ -- Philipp Huebner <debalance@debian.org>  Wed, 16 Apr 2014 18:34:03 +0200
