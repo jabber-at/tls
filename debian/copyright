@@ -31,7 +31,7 @@ License: GPL-2+
 
 Files: c_src/stdint.h
 Copyright: 2006-2008 Alexander Chemeris
-License: BSD 3-Clause
+License: BSD-3-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
  .
