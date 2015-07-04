@@ -1,12 +1,18 @@
+erlang-p1-tls (0.2015.06.02-0.1local) unstable; urgency=low
+
+  * Imported Upstream version 0.2015.06.02
+
+ -- Mathias Ertl <mati@jabber.at>  Sun, 05 Jul 2015 00:46:43 +0200
+
 erlang-p1-tls (0.2015.02.04-0.1local) unstable; urgency=low
 
-  * Imported Upstreeam version 0.2015.02.04
+  * Imported Upstream version 0.2015.02.04
 
  -- Mathias Ertl <mati@jabber.at>  Fri, 06 Mar 2015 23:53:09 +0100
 
 erlang-p1-tls (0.2014.12.20-1) unstable; urgency=low
 
-  * Imported Upstreeam version 0.2014.12.20
+  * Imported Upstream version 0.2014.12.20
 
  -- Mathias Ertl <mati@jabber.at>  Sat, 20 Dec 2014 13:27:52 +0100
 
