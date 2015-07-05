@@ -139,10 +139,17 @@ tcp_to_tls(TCPSocket, Options) ->
                                  false ->
                                      <<>>
                              end,
+          DHFile = case lists:keysearch(dhfile, 1, Options) of
+                       {value, {dhfile, D}} ->
+                           iolist_to_binary(D);
+                       false ->
+                           <<>>
+                   end,
           CertFile1 = iolist_to_binary(CertFile),
 	  case catch port_control(Port, Command bor Flags,
 				  <<CertFile1/binary, 0, Ciphers/binary,
-				    0, ProtocolOpts/binary, 0>>)
+				    0, ProtocolOpts/binary, 0, DHFile/binary,
+				    0>>)
 	      of
 	    {'EXIT', {badarg, _}} -> {error, einval};
 	    <<0>> ->
@@ -165,20 +172,16 @@ recv(Socket, Length) -> recv(Socket, Length, infinity).
                          {error, binary()} |
                          {ok, binary()}.
 
-recv(#tlssock{tcpsock = TCPSocket, tlsport = Port} =
+recv(#tlssock{tcpsock = TCPSocket} =
 	 TLSSock,
      Length, Timeout) ->
-    case catch port_control(Port, ?GET_DECRYPTED_INPUT,
-			    <<Length:32>>)
-	of
-      {'EXIT', {badarg, _}} -> {error, einval};
-      <<0>> ->
-	  case gen_tcp:recv(TCPSocket, 0, Timeout) of
-	    {ok, Packet} -> recv_data(TLSSock, Packet, Length);
-	    {error, _Reason} = Error -> Error
-	  end;
-      <<0, In/binary>> -> {ok, In};
-      <<1, Error/binary>> -> {error, (Error)}
+    case recv_data(TLSSock, <<>>, Length) of
+        {ok, <<>>} ->
+            case gen_tcp:recv(TCPSocket, 0, Timeout) of
+                {ok, Packet} -> recv_data(TLSSock, Packet, Length);
+                {error, _Reason} = Error -> Error
+            end;
+        Res -> Res
     end.
 
 -spec recv_data(tls_socket(), binary()) -> {error, inet:posix() | binary()} |
@@ -207,7 +210,8 @@ recv_data1(#tlssock{tcpsock = TCPSocket,
 				  <<Length:32>>)
 	      of
 	    {'EXIT', {badarg, _}} -> {error, einval};
-	    <<0, In/binary>> ->
+	    <<0, In/binary>> -> {ok, In};
+	    <<2, In/binary>> ->
 		case catch port_control(Port, ?GET_ENCRYPTED_OUTPUT, []) of
 		  {'EXIT', {badarg, _}} -> {error, einval};
 		  <<0, Out/binary>> ->
@@ -225,8 +229,7 @@ recv_data1(#tlssock{tcpsock = TCPSocket,
 -spec send(tls_socket(), binary()) -> ok | {error, inet:posix() |
                                             binary() | timeout}.
 
-send(#tlssock{tcpsock = TCPSocket, tlsport = Port} =
-	 TLSSock,
+send(#tlssock{tcpsock = TCPSocket, tlsport = Port},
      Packet) ->
     case catch port_control(Port, ?SET_DECRYPTED_OUTPUT, Packet)
 	of
@@ -237,12 +240,7 @@ send(#tlssock{tcpsock = TCPSocket, tlsport = Port} =
 	    <<0, Out/binary>> -> gen_tcp:send(TCPSocket, Out);
 	    <<1, Error/binary>> -> {error, (Error)}
 	  end;
-      <<1, Error/binary>> -> {error, (Error)};
-      <<2>> -> % Dirty hack
-	  receive
-	    {timeout, _Timer, _} -> {error, timeout}
-	    after 100 -> send(TLSSock, Packet)
-	  end
+      <<1, Error/binary>> -> {error, Error}
     end.
 
 -spec setopts(tls_socket(), list()) -> ok | {error, inet:posix()}.
