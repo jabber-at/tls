@@ -1,4 +1,4 @@
-erlang-p1-tls (0.2015.06.02-0.2local) unstable; urgency=low
+erlang-p1-tls (0.2015.06.02-0.1) unstable; urgency=low
 
   * Imported Upstream version 0.2015.06.02
   * Add erlang-syntax-tools as build dependency.
