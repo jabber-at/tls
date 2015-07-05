@@ -1,6 +1,6 @@
 Source: erlang-p1-tls
 Priority: optional
-Maintainer: Philipp Huebner <debalance@debian.org>
+Maintainer: Mathias Ertl <mati@jabber.at>
 Build-Depends: debhelper (>= 9), dh-rebar, libssl-dev, erlang-syntax-tools
 Standards-Version: 3.9.5
 Section: libs
