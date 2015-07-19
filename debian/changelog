@@ -1,3 +1,9 @@
+erlang-p1-tls (0.2015.06.08-0.1) unstable; urgency=low
+
+  * Imported Upstream version 0.2015.06.08
+
+ -- Mathias Ertl <mati@jabber.at>  Sun, 19 Jul 2015 12:39:21 +0200
+
 erlang-p1-tls (0.2015.06.02-0.1) unstable; urgency=low
 
   * Imported Upstream version 0.2015.06.02
