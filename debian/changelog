@@ -6,6 +6,7 @@ erlang-p1-tls (1.0.0-0.1) unstable; urgency=low
   * Use upstream tags for source packages.
   * Name Philipp Huebner as original maintainer.
   * Fix empty short license paragraph for configure in debian/copyright.
+  * Fix license name for GPL-2 with OpenSSL exception.
 
  -- Mathias Ertl <mati@jabber.at>  Fri, 15 Jan 2016 10:18:35 +0100
 
