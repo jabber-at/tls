@@ -6,7 +6,7 @@ Files: *
 Copyright: 2002-2014 ProcessOne
            2002-2014 Alexey Shchepin <alexey@process-one.net>
            2013-2014 Evgeniy Khramtsov <ekhramtsov@process-one.net>
-License: GPL-2+
+License: GPL-2+ with OpenSSL exception
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License as
  published by the Free Software Foundation; either version 2 of the
@@ -58,7 +58,7 @@ License: BSD-3-Clause
 
 Files: configure
 Copyright: 1992-2010 Free Software Foundation, Inc.
-License:
+License: FSF
  This configure script is free software; the Free Software Foundation
  gives unlimited permission to copy, distribute and modify it.
 
