@@ -5,6 +5,7 @@ erlang-p1-tls (1.0.0-0.1) unstable; urgency=low
     hence the versioning has changed.
   * Use upstream tags for source packages.
   * Name Philipp Huebner as original maintainer.
+  * Fix duplicate license paragraph in debian/copyright.
 
  -- Mathias Ertl <mati@jabber.at>  Fri, 15 Jan 2016 10:18:35 +0100
 
