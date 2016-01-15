@@ -1,3 +1,11 @@
+erlang-p1-tls (1.0.0-0.1) unstable; urgency=low
+
+  * New upstream release.
+  * This package now uses upstream releases instead of a git snapshot,
+    hence the versioning has changed.
+
+ -- Mathias Ertl <mati@jabber.at>  Fri, 15 Jan 2016 10:18:35 +0100
+
 erlang-p1-tls (0.2015.08.03-1) unstable; urgency=low
 
   * Imported Upstream version 0.2015.08.03
