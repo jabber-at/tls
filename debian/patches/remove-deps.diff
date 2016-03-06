@@ -1,5 +1,12 @@
---- a/rebar.config
-+++ b/rebar.config
+Description: remove deps in rebar.config
+ Without this patch, rebar would download and compile the listed deps
+ at compile time.
+Author: Philipp Huebner <debalance@debian.org>
+
+Index: erlang-p1-tls/rebar.config
+===================================================================
+--- erlang-p1-tls.orig/rebar.config
++++ erlang-p1-tls/rebar.config
 @@ -27,7 +27,6 @@
  {port_specs, [{"priv/lib/fast_tls_drv.so", ["c_src/fast_tls_drv.c"]},
                {"priv/lib/p1_sha.so", ["c_src/p1_sha.c"]}]}.
