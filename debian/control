@@ -13,7 +13,7 @@ Package: erlang-p1-tls
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, erlang-base | ${erlang-abi:Depends},
          ${erlang:Depends}
-Conflicts: ejabberd (< 1:16.02)
+Conflicts: ejabberd (<< 1:16.02)
 Description: native TLS / SSL driver for Erlang / Elixir
  Fast TSL is a native TLS / SSL driver for Erlang / Elixir.
  It is based on OpenSSL, a proven and efficient TLS implementation.
