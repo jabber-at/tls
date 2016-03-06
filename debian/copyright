@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: tls
-Source: https://github.com/processone/tls
+Upstream-Name: fast_tls
+Source: https://github.com/processone/fast_tls
 
 Files: *
 Copyright: 2002-2014 ProcessOne
