@@ -1,30 +1,27 @@
 %%%----------------------------------------------------------------------
-%%% File    : p1_tls.erl
+%%% File    : fast_tls.erl
 %%% Author  : Alexey Shchepin <alexey@process-one.net>
 %%% Purpose : Interface to openssl
 %%% Created : 24 Jul 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% p1_tls, Copyright (C) 2002-2015   ProcessOne
+%%% Copyright (C) 2002-2016 ProcessOne, SARL. All Rights Reserved.
 %%%
-%%% This program is free software; you can redistribute it and/or
-%%% modify it under the terms of the GNU General Public License as
-%%% published by the Free Software Foundation; either version 2 of the
-%%% License, or (at your option) any later version.
+%%% Licensed under the Apache License, Version 2.0 (the "License");
+%%% you may not use this file except in compliance with the License.
+%%% You may obtain a copy of the License at
 %%%
-%%% This program is distributed in the hope that it will be useful,
-%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-%%% General Public License for more details.
+%%%     http://www.apache.org/licenses/LICENSE-2.0
 %%%
-%%% You should have received a copy of the GNU General Public License
-%%% along with this program; if not, write to the Free Software
-%%% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-%%% 02111-1307 USA
+%%% Unless required by applicable law or agreed to in writing, software
+%%% distributed under the License is distributed on an "AS IS" BASIS,
+%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%% See the License for the specific language governing permissions and
+%%% limitations under the License.
 %%%
 %%%----------------------------------------------------------------------
 
--module(p1_tls).
+-module(fast_tls).
 
 -author('alexey@process-one.net').
 
@@ -112,7 +109,7 @@ tcp_to_tls(TCPSocket, Options) ->
     case lists:keysearch(certfile, 1, Options) of
       {value, {certfile, CertFile}} ->
 	  load_driver(),
-	  Port = open_port({spawn, "p1_tls_drv"}, [binary]),
+	  Port = open_port({spawn, "fast_tls_drv"}, [binary]),
 	  Flags1 = case lists:member(verify_none, Options) of
                        true -> ?VERIFY_NONE;
                        false -> 0
@@ -287,7 +284,7 @@ get_verify_result(#tlssock{tlsport = Port}) ->
 
 test() ->
     load_driver(),
-    Port = open_port({spawn, "p1_tls_drv"}, [binary]),
+    Port = open_port({spawn, "fast_tls_drv"}, [binary]),
     ?PRINT("open_port: ~p~n", [Port]),
     PCRes = port_control(Port, ?SET_CERTIFICATE_FILE_ACCEPT,
 			 <<"./ssl.pem", 0>>),
@@ -405,13 +402,10 @@ cert_verify_code(X) ->
 integer_to_binary(I) ->
     list_to_binary(integer_to_list(I)).
 
-get_so_path() ->
-    EbinDir = filename:dirname(code:which(?MODULE)),
-    AppDir = filename:dirname(EbinDir),
-    filename:join([AppDir, "priv", "lib"]).
-
 load_driver() ->
-    case erl_ddll:load_driver(get_so_path(), p1_tls_drv) of
+    SOPath = p1_nif_utils:get_so_path(fast_tls, [fast_tls], "fast_tls_drv"),
+    Dir = filename:dirname(SOPath),
+    case erl_ddll:load_driver(Dir, "fast_tls_drv") of
         ok ->
             ok;
         {error, already_loaded} ->

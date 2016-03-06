@@ -5,22 +5,19 @@
 %%% Created : 20 Dec 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% p1_tls, Copyright (C) 2002-2015   ProcessOne
+%%% Copyright (C) 2002-2016 ProcessOne, SARL. All Rights Reserved.
 %%%
-%%% This program is free software; you can redistribute it and/or
-%%% modify it under the terms of the GNU General Public License as
-%%% published by the Free Software Foundation; either version 2 of the
-%%% License, or (at your option) any later version.
+%%% Licensed under the Apache License, Version 2.0 (the "License");
+%%% you may not use this file except in compliance with the License.
+%%% You may obtain a copy of the License at
 %%%
-%%% This program is distributed in the hope that it will be useful,
-%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-%%% General Public License for more details.
+%%%     http://www.apache.org/licenses/LICENSE-2.0
 %%%
-%%% You should have received a copy of the GNU General Public License
-%%% along with this program; if not, write to the Free Software
-%%% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-%%% 02111-1307 USA
+%%% Unless required by applicable law or agreed to in writing, software
+%%% distributed under the License is distributed on an "AS IS" BASIS,
+%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%% See the License for the specific language governing permissions and
+%%% limitations under the License.
 %%%
 %%%----------------------------------------------------------------------
 
@@ -28,7 +25,7 @@
 
 -author('alexey@process-one.net').
 
--export([load_nif/0, load_nif/1,
+-export([load_nif/0,
          sha/1, sha1/1, sha224/1, sha256/1,
          sha384/1, sha512/1, to_hexlist/1]).
 
@@ -40,10 +37,7 @@
 %%% API functions
 %%%===================================================================
 load_nif() ->
-    load_nif(get_so_path()).
-
-load_nif(LibDir) ->
-    SOPath = filename:join(LibDir, "p1_sha"),
+    SOPath = p1_nif_utils:get_so_path(?MODULE, [fast_tls], "p1_sha"),
     case catch erlang:load_nif(SOPath, 0) of
         ok ->
             ok;
@@ -51,7 +45,7 @@ load_nif(LibDir) ->
             error_logger:warning_msg("unable to load sha NIF: ~p~n", [Err]),
             Err
     end.
-
+ 
 -spec to_hexlist(iodata()) -> binary().
 -spec sha(iodata()) -> binary().
 -spec sha1(iodata()) -> binary().
@@ -82,20 +76,12 @@ sha512(_Text) ->
     erlang:nif_error(nif_not_loaded).
 
 %%%===================================================================
-%%% Internal functions
-%%%===================================================================
-get_so_path() ->
-    EbinDir = filename:dirname(code:which(?MODULE)),
-    AppDir = filename:dirname(EbinDir),
-    filename:join([AppDir, "priv", "lib"]).
-
-%%%===================================================================
 %%% Unit tests
 %%%===================================================================
 -ifdef(TEST).
 
 load_nif_test() ->
-    ?assertEqual(ok, load_nif(filename:join(["..", "priv", "lib"]))).
+    ?assertEqual(ok, load_nif()).
 
 sha1_test() ->
     ?assertEqual(

@@ -1,20 +1,17 @@
 /*
- * ejabberd, Copyright (C) 2002-2015   ProcessOne
+ * Copyright (C) 2002-2016 ProcessOne, SARL. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307 USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
@@ -841,7 +838,7 @@ ErlDrvEntry tls_driver_entry = {
    NULL,			/* F_PTR output, called when erlang has sent */
    NULL,			/* F_PTR ready_input, called when input descriptor ready */
    NULL,			/* F_PTR ready_output, called when output descriptor ready */
-   "p1_tls_drv",		/* char *driver_name, the argument to open_port */
+   "fast_tls_drv",		/* char *driver_name, the argument to open_port */
    tls_drv_finish,		/* F_PTR finish, called when unloaded */
    NULL,			/* handle */
    tls_drv_control,		/* F_PTR control, port_command callback */
@@ -861,7 +858,7 @@ ErlDrvEntry tls_driver_entry = {
   NULL                  /* stop_select */
 };
 
-DRIVER_INIT(p1_tls_drv) /* must match name in driver_entry */
+DRIVER_INIT(fast_tls_drv) /* must match name in driver_entry */
 {
    CRYPTO_set_mem_functions(driver_alloc, driver_realloc, driver_free);
    OpenSSL_add_ssl_algorithms();
