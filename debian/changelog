@@ -1,3 +1,9 @@
+erlang-p1-tls (1.0.3-0.1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Mathias Ertl <mati@jabber.at>  Tue, 03 May 2016 19:34:35 +0200
+
 erlang-p1-tls (1.0.1-0.1) unstable; urgency=low
 
   * New upstream release.
