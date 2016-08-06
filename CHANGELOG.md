@@ -1,3 +1,13 @@
+# Version 1.0.6
+
+* Fix compilation on rebar3 (Paweł Chmielowski)
+
+
+# Version 1.0.5
+
+* OpenSSL 1.1.0 compliance (Paweł Chmielowski)
+* Use p1_utils 1.0.4 (Mickaël Rémond)
+
 # Version 1.0.4
 
 * Better compliance with R17 and R18 (Paweł Chmielowski)

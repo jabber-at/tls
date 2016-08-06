@@ -47,7 +47,10 @@ ModCfg = fun(Cfg, Keys, Op, Default) -> ModCfg0(ModCfg0, Cfg, Keys, Op, Default)
 ModCfgS = fun(Cfg, Keys, Val) -> ModCfg0(ModCfg0, Cfg, Keys, fun(_V) -> Val end, "") end.
 
 
-ExitFlag = case erlang:system_info(version) >= "7.3" of true -> "-DHAS_ERTS_EXIT"; _ -> "" end.
+SysVersion = lists:map(fun erlang:list_to_integer/1,
+		       string:tokens(erlang:system_info(version), ".")),
+
+ExitFlag = case SysVersion >= [7, 3] of true -> "-DHAS_ERTS_EXIT"; _ -> "" end.
 
 Cfg0 = ModCfg(CONFIG, [port_env, "CFLAGS"], fun(V) -> V ++ " " ++ ExitFlag ++ " " ++ CfgCFlags end, "$CFLAGS"),
 Cfg00 = ModCfg(Cfg0, [port_env, "LDFLAGS"], fun(V) -> V ++ " " ++ CfgLDFlags end, "$LDFLAGS"),
@@ -84,7 +87,13 @@ Cfg2 = case IsRebar3 of
                                                     end, DepsList)
                          end,
                RB1 = ModCfg(Cfg1, [deps], DepsFun, []),
-               ModCfg(RB1, [plugins], fun(V) -> V ++ [rebar3_hex] end, []);
+               RB2 = ModCfg(RB1, [plugins], fun(V) -> V ++ [rebar3_hex, pc] end, []),
+               ModCfg(RB2, [provider_hooks], fun(V) -> V ++ [{pre,
+							      [
+							       {compile, {pc, compile}},
+							       {clean, {pc, clean}}
+							      ]
+							     }] end, []);
            false ->
                Cfg1
        end,
