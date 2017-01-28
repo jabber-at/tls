@@ -5,7 +5,7 @@
 %%% Created : 24 Jul 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% Copyright (C) 2002-2016 ProcessOne, SARL. All Rights Reserved.
+%%% Copyright (C) 2002-2017 ProcessOne, SARL. All Rights Reserved.
 %%%
 %%% Licensed under the Apache License, Version 2.0 (the "License");
 %%% you may not use this file except in compliance with the License.
@@ -32,7 +32,8 @@
 -export([start_link/0, tcp_to_tls/2,
 	 tls_to_tcp/1, send/2, recv/2, recv/3, recv_data/2,
 	 setopts/2, sockname/1, peername/1,
-	 controlling_process/2, close/1, get_peer_certificate/1,
+	 controlling_process/2, close/1,
+	 get_peer_certificate/1, get_peer_certificate/2,
 	 get_verify_result/1, get_cert_verify_string/2, test/0]).
 
 %% Internal exports, call-back functions.
@@ -272,12 +273,15 @@ close(#tlssock{tcpsock = TCPSocket, tlsport = Port}) ->
     gen_tcp:close(TCPSocket), port_close(Port).
 
 -spec get_peer_certificate(tls_socket()) -> error | {ok, cert()}.
+get_peer_certificate(TLSSock) ->
+    get_peer_certificate(TLSSock, plain).
 
-get_peer_certificate(#tlssock{tlsport = Port}) ->
+-spec get_peer_certificate(tls_socket(), otp|plain) -> error | {ok, cert()}.
+get_peer_certificate(#tlssock{tlsport = Port}, Type) ->
     case catch port_control(Port, ?GET_PEER_CERTIFICATE, []) of
       {'EXIT', {badarg, _}} -> error;
       <<0, BCert/binary>> ->
-	  case catch public_key:pkix_decode_cert(BCert, plain)
+	  case catch public_key:pkix_decode_cert(BCert, Type)
 	      of
 	    {ok, Cert} -> {ok, Cert};
 	    {'Certificate', _, _, _} = Cert -> {ok, Cert};
@@ -414,6 +418,9 @@ integer_to_binary(I) ->
 
 load_driver() ->
     SOPath = p1_nif_utils:get_so_path(fast_tls, [fast_tls], "fast_tls_drv"),
+    load_driver(SOPath).
+
+load_driver(SOPath) ->
     Dir = filename:dirname(SOPath),
     case erl_ddll:load_driver(Dir, "fast_tls_drv") of
         ok ->
@@ -429,6 +436,7 @@ load_driver() ->
 -ifdef(TEST).
 
 load_nif_test() ->
-    ?assertEqual(ok, load_driver()).
+    SOPath = p1_nif_utils:get_so_path(fast_tls, [], "fast_tls_drv"),
+    ?assertEqual(ok, load_driver(SOPath)).
 
 -endif.

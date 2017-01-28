@@ -1,3 +1,18 @@
+# Version 1.0.10
+
+* Add ability to use system installed deps instead fetching them from git (Paweł Chmielowski)
+
+# Version 1.0.9
+
+* Fix problem with compilation agains libressl
+* Make tests use localy build c library instead of system one
+
+# Version 1.0.8
+
+* Use p1_utils 1.0.6 (Christophe Romain)
+* Make it possible to decode certificate to OTP format (Evgeniy Khramtsov)
+* Make sure p1_sha isn't compiled to native code (Holger Weiss)
+
 # Version 1.0.7
 
 * Use p1_utils 1.0.5 (Mickaël Rémond)

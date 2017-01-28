@@ -5,7 +5,7 @@
 %%% Created : 20 Dec 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% Copyright (C) 2002-2016 ProcessOne, SARL. All Rights Reserved.
+%%% Copyright (C) 2002-2017 ProcessOne, SARL. All Rights Reserved.
 %%%
 %%% Licensed under the Apache License, Version 2.0 (the "License");
 %%% you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
 
 -author('alexey@process-one.net').
 
+-compile(no_native).
+
 -export([load_nif/0,
          sha/1, sha1/1, sha224/1, sha256/1,
          sha384/1, sha512/1, to_hexlist/1]).
@@ -37,16 +39,18 @@
 %%% API functions
 %%%===================================================================
 load_nif() ->
-    SOPath = p1_nif_utils:get_so_path(?MODULE, [fast_tls], "p1_sha"),
+    load_nif(p1_nif_utils:get_so_path(?MODULE, [fast_tls], "p1_sha")).
+
+load_nif(SOPath) ->
     case catch erlang:load_nif(SOPath, 0) of
-        ok ->
-            ok;
-        {error, {reload, _}} ->
-            %% Do not log warning when just attempting to reload nif.
-            ok;
-        Err ->
-            error_logger:warning_msg("unable to load sha NIF: ~p~n", [Err]),
-            Err
+	ok ->
+	    ok;
+	{error, {reload, _}} ->
+	    %% Do not log warning when just attempting to reload nif.
+	    ok;
+	Err ->
+	    error_logger:warning_msg("unable to load sha NIF: ~p~n", [Err]),
+	    Err
     end.
  
 -spec to_hexlist(iodata()) -> binary().
@@ -84,7 +88,7 @@ sha512(_Text) ->
 -ifdef(TEST).
 
 load_nif_test() ->
-    ?assertEqual(ok, load_nif()).
+    ?assertEqual(ok, load_nif(p1_nif_utils:get_so_path(?MODULE, [], "p1_sha"))).
 
 sha1_test() ->
     ?assertEqual(
