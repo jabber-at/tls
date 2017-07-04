@@ -1,6 +1,7 @@
 erlang-p1-tls (1.0.13-0.1) unstable; urgency=medium
 
   * New upstream release.
+  * Update Standards-Version to 4.0.0 (no changes needed).
 
  -- Mathias Ertl <mati@jabber.at>  Tue, 04 Jul 2017 15:25:22 +0200
 

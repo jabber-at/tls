@@ -3,7 +3,7 @@ Priority: optional
 Maintainer: Mathias Ertl <mati@jabber.at>
 XSBC-Orig-Maintainer: Philipp Huebner <debalance@debian.org>
 Build-Depends: debhelper (>= 9), dh-rebar, erlang-eunit, erlang-p1-utils (>= 1.0.7), erlang-syntax-tools, libssl-dev
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Section: libs
 Homepage: https://github.com/processone/fast_tls
 VCS-Git: https://github.com/jabber-at/tls.git
