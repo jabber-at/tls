@@ -59,9 +59,6 @@ typedef unsigned __int32 uint32_t;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define DH_set0_pqg(dh, dh_p, param, dh_g) (dh)->p = dh_p; (dh)->g = dh_g
-#endif
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define our_alloc enif_alloc
 #define our_realloc enif_realloc
 #define our_free enif_free
@@ -78,6 +75,10 @@ static void our_free(void *ptr, const char *file, int line) {
 }
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L || OPENSSL_VERSION_NUMBER < 0x10002000
+#undef SSL_CTX_set_ecdh_auto
+#define SSL_CTX_set_ecdh_auto(A, B) do {} while(0)
+#endif
 
 #define CIPHERS "DEFAULT:!EXPORT:!LOW:!RC4:!SSLv2"
 
@@ -376,17 +377,7 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 #ifndef OPENSSL_NO_ECDH
 
 static void setup_ecdh(SSL_CTX *ctx) {
-    EC_KEY *ecdh;
-
-    if (SSLeay() < 0x1000005fL) {
-        return;
-    }
-
-    ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
-    SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-
-    EC_KEY_free(ecdh);
+    SSL_CTX_set_ecdh_auto(ctx, 1);
 }
 
 #endif
@@ -667,7 +658,7 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
         return enif_make_badarg(env);
     if (!enif_inspect_iolist_as_binary(env, argv[2], &ciphers_bin))
         return enif_make_badarg(env);
-    if (!enif_inspect_iolist_as_binary(env, argv[2], &protocol_options_bin))
+    if (!enif_inspect_iolist_as_binary(env, argv[3], &protocol_options_bin))
         return enif_make_badarg(env);
     if (!enif_inspect_iolist_as_binary(env, argv[4], &dhfile_bin))
         return enif_make_badarg(env);
@@ -678,7 +669,7 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
     size_t po_len_left = protocol_options_bin.size;
     unsigned char *po = protocol_options_bin.data;
 
-    while (1) {
+    while (po_len_left) {
         unsigned char *pos = memchr(po, '|', po_len_left);
 
         if (!pos) {

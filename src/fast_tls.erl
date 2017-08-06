@@ -436,22 +436,41 @@ load_nif_test() ->
     SOPath = p1_nif_utils:get_so_path(fast_tls, [], "fast_tls"),
     ?assertEqual(ok, load_nif(SOPath)).
 
-transmision_test() ->
-    {LPid, Port} = setup_listener(),
-    setup_sender(Port),
+transmission_test() ->
+    {LPid, Port} = setup_listener([]),
+    SPid = setup_sender(Port, []),
     LPid ! {stop, self()},
     receive
 	{received, Msg} ->
 	    ?assertEqual(Msg, <<"abcdefghi">>)
+    end,
+    SPid ! {stop, self()},
+    receive
+	{result, Res} ->
+	    ?assertEqual(ok, Res)
     end.
 
-setup_listener() ->
-    {ok, ListenSocket} = gen_tcp:listen(50123,
+not_compatible_protocol_options_test() ->
+    {LPid, Port} = setup_listener([{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1|no_tlsv1_1">>}]),
+    SPid = setup_sender(Port, [{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1_1|no_tlsv1_2">>}]),
+    LPid ! {stop, self()},
+    receive
+	{received, Msg} ->
+	    ?assertEqual(Msg, <<>>)
+    end,
+    SPid ! {stop, self()},
+    receive
+	{result, Res} ->
+	    ?assertEqual({badmatch, {error, enotconn}}, Res)
+    end.
+
+setup_listener(Opts) ->
+    {ok, ListenSocket} = gen_tcp:listen(0,
 					[binary, {packet, 0}, {active, false},
 					 {reuseaddr, true}, {nodelay, true}]),
     Pid = spawn(fun() ->
 	{ok, Socket} = gen_tcp:accept(ListenSocket),
-	{ok, TLSSock} = tcp_to_tls(Socket, [{certfile, <<"../tests/cert.pem">>}]),
+	{ok, TLSSock} = tcp_to_tls(Socket, [{certfile, <<"../tests/cert.pem">>} | Opts]),
 	listener_loop(TLSSock, <<>>)
 		end),
     {ok, Port} = inet:port(ListenSocket),
@@ -470,24 +489,32 @@ listener_loop(TLSSock, Msg) ->
 	    listener_loop(TLSSock, <<Msg/binary, Data/binary>>)
     end.
 
-setup_sender(Port) ->
+setup_sender(Port, Opts) ->
     {ok, Socket} = gen_tcp:connect({127, 0, 0, 1}, Port, [
 	binary, {packet, 0}, {active, false},
 	{reuseaddr, true}, {nodelay, true}]),
     spawn(fun() ->
-	{ok, TLSSock} = tcp_to_tls(Socket, [connect, {certfile, <<"../tests/cert.pem">>}]),
+	{ok, TLSSock} = tcp_to_tls(Socket, [connect, {certfile, <<"../tests/cert.pem">>} | Opts]),
 	sender_loop(TLSSock)
-	  end),
-    ok.
+	  end).
 
 sender_loop(TLSSock) ->
-    recv(TLSSock, 0, 1000),
-    ok = send(TLSSock, <<"abc">>),
-    recv(TLSSock, 0, 1000),
-    ok = send(TLSSock, <<"def">>),
-    recv(TLSSock, 0, 1000),
-    ok = send(TLSSock, <<"ghi">>),
-    recv(TLSSock, 0, 1000),
-    close(TLSSock).
+    Res = try
+	      recv(TLSSock, 0, 1000),
+	      ok = send(TLSSock, <<"abc">>),
+	      recv(TLSSock, 0, 1000),
+	      ok = send(TLSSock, <<"def">>),
+	      recv(TLSSock, 0, 1000),
+	      ok = send(TLSSock, <<"ghi">>),
+	      recv(TLSSock, 0, 1000),
+	      close(TLSSock),
+	      ok
+	  catch
+	      _:Err -> Err
+	  end,
+    receive
+	{stop, Pid} ->
+	    Pid ! {result, Res}
+    end.
 
 -endif.
