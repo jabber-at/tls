@@ -1,12 +1,11 @@
-From f9de643f167cfa274862d323694c1bf5b57d3be2 Mon Sep 17 00:00:00 2001
-From: =?UTF-8?q?Pawe=C5=82=20Chmielowski?= <pchmielowski@process-one.net>
-Date: Wed, 19 Jul 2017 13:48:04 +0200
-Subject: [PATCH] Try to fix tests for older openssl
-
+Description: Fix tests for older openssl
+ Test-suite in 1.0.15 fails on Debian Stretch or older, was fixed in next release.
+Author: Paweł Chmielowski <pchmielowski@process-one.net>
+Origin: upstream, https://github.com/processone/fast_tls/commit/f9de643f167cfa274862d323694c1bf5b57d3be2
+Applied-Upstream: 1.0.16
+Last-Update: 2017-08-08
 ---
- src/fast_tls.erl | 31 ++++++++++++++++++-------------
- 1 file changed, 18 insertions(+), 13 deletions(-)
-
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 diff --git a/src/fast_tls.erl b/src/fast_tls.erl
 index f1d8cfe..802acfd 100644
 --- a/src/fast_tls.erl
