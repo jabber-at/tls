@@ -1,2 +1,2 @@
 remove-deps.diff
-test.patch
+openssl_tests.patch

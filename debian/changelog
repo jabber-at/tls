@@ -1,6 +1,8 @@
 erlang-p1-tls (1.0.15-0.1) unstable; urgency=medium
 
   * New upstream release.
+  * Add openssl_tests.patch, which fixes compilation with older OpenSSL
+    versions.
 
  -- Mathias Ertl <mati@jabber.at>  Sun, 06 Aug 2017 14:51:44 +0200
 
