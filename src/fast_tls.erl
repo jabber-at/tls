@@ -29,7 +29,7 @@
 
 -behaviour(gen_server).
 
--export([open_nif/6, get_decrypted_input_nif/2,
+-export([open_nif/8, get_decrypted_input_nif/2,
 	 set_encrypted_input_nif/2, get_encrypted_output_nif/1,
 	 set_decrypted_output_nif/2, get_peer_certificate_nif/1,
 	 get_verify_result_nif/1, invalidate_nif/1]).
@@ -93,7 +93,7 @@ init([]) ->
             {stop, Why}
     end.
 
-open_nif(_Flags, _CertFile, _Ciphers, _ProtocolOpts, _DHFile, _CAFile) ->
+open_nif(_Flags, _CertFile, _Ciphers, _ProtocolOpts, _DHFile, _CAFile, _SNI, _ALPN) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 get_decrypted_input_nif(_Port, _Length) ->
@@ -181,8 +181,20 @@ tcp_to_tls(TCPSocket, Options) ->
 			 false ->
 			     <<>>
 		     end,
+	    ServerName = case lists:keysearch(sni, 1, Options) of
+			     {value, {sni, SNI}} ->
+				 iolist_to_binary(SNI);
+			     false ->
+				 <<>>
+			 end,
+	    ALPN = case lists:keysearch(alpn, 1, Options) of
+		       {value, {alpn, ProtoList}} ->
+			   encode_alpn(ProtoList);
+		       false ->
+			   <<>>
+		   end,
 	    case open_nif(Command bor Flags, CertFile, Ciphers, ProtocolOpts,
-			  DHFile, CAFile) of
+			  DHFile, CAFile, ServerName, ALPN) of
 		{ok, Port} ->
 		    {ok, #tlssock{tcpsock = TCPSocket, tlsport = Port}};
 		Err = {error, _} ->
@@ -414,6 +426,9 @@ cert_verify_code(X) ->
 integer_to_binary(I) ->
     list_to_binary(integer_to_list(I)).
 
+encode_alpn(ProtoList) ->
+    [<<(size(Proto)), Proto/binary>> || Proto <- ProtoList, Proto /= <<>>].
+
 load_nif() ->
     SOPath = p1_nif_utils:get_so_path(fast_tls, [fast_tls], "fast_tls"),
     load_nif(SOPath).
@@ -439,29 +454,29 @@ load_nif_test() ->
 transmission_test() ->
     {LPid, Port} = setup_listener([]),
     SPid = setup_sender(Port, []),
-    LPid ! {stop, self()},
-    receive
-	{received, Msg} ->
-	    ?assertEqual(Msg, <<"abcdefghi">>)
-    end,
     SPid ! {stop, self()},
     receive
 	{result, Res} ->
 	    ?assertEqual(ok, Res)
+    end,
+    LPid ! {stop, self()},
+    receive
+	{received, Msg} ->
+	    ?assertEqual(Msg, <<"abcdefghi">>)
     end.
 
 not_compatible_protocol_options_test() ->
-    {LPid, Port} = setup_listener([{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1|no_tlsv1_1">>}]),
-    SPid = setup_sender(Port, [{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1_1|no_tlsv1_2">>}]),
+    {LPid, Port} = setup_listener([{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1_1|no_tlsv1_2">>}]),
+    SPid = setup_sender(Port, [{protocol_options, <<"no_sslv2|no_sslv3|no_tlsv1|no_tlsv1_2">>}]),
+    SPid ! {stop, self()},
+    receive
+	{result, Res} ->
+	    ?assertMatch({badmatch, {error, _}}, Res)
+    end,
     LPid ! {stop, self()},
     receive
 	{received, Msg} ->
 	    ?assertEqual(Msg, <<>>)
-    end,
-    SPid ! {stop, self()},
-    receive
-	{result, Res} ->
-	    ?assertEqual({badmatch, {error, enotconn}}, Res)
     end.
 
 setup_listener(Opts) ->
@@ -479,7 +494,12 @@ setup_listener(Opts) ->
 listener_loop(TLSSock, Msg) ->
     case recv(TLSSock, 1, 1000) of
 	{error, timeout} ->
-	    listener_loop(TLSSock, Msg);
+	    receive
+		{stop, Pid} ->
+		    Pid ! {received, Msg}
+	    after 0 ->
+		listener_loop(TLSSock, Msg)
+	    end;
 	{error, _} ->
 	    receive
 		{stop, Pid} ->

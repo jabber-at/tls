@@ -1,3 +1,10 @@
+# Version 1.0.16
+
+* Updating p1_utils to version 1.0.10.
+* Fix couple memory leaks
+* Make ECDH work on openssl < 1.0.2
+* Add SNI and ALPN support for client connections
+
 # Version 1.0.15
 
 * Fix Hex packaging
@@ -31,7 +38,7 @@
 
 # Version 1.0.9
 
-* Fix problem with compilation agains libressl
+* Fix problem with compilation against libressl
 * Make tests use localy build c library instead of system one
 
 # Version 1.0.8
