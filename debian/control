@@ -2,8 +2,8 @@ Source: erlang-p1-tls
 Priority: optional
 Maintainer: Mathias Ertl <mati@jabber.at>
 XSBC-Orig-Maintainer: Philipp Huebner <debalance@debian.org>
-Build-Depends: debhelper (>= 9), dh-rebar, erlang-eunit, erlang-p1-utils (>= 1.0.9), erlang-syntax-tools, libssl-dev
-Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 9), dh-rebar, erlang-base, erlang-eunit, erlang-p1-utils (>= 1.0.10), erlang-syntax-tools, libssl-dev
+Standards-Version: 4.1.0
 Section: libs
 Homepage: https://github.com/processone/fast_tls
 VCS-Git: https://github.com/jabber-at/tls.git
@@ -12,8 +12,7 @@ VCS-Browser: https://github.com/jabber-at/tls
 Package: erlang-p1-tls
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, erlang-base | ${erlang-abi:Depends},
-         ${erlang:Depends}, erlang-p1-utils (>= 1.0.7)
-Conflicts: ejabberd (<< 1:16.02)
+         ${erlang:Depends}, erlang-p1-utils (>= 1.0.10)
 Description: native TLS / SSL driver for Erlang / Elixir
  Fast TSL is a native TLS / SSL driver for Erlang / Elixir.
  It is based on OpenSSL, a proven and efficient TLS implementation.
