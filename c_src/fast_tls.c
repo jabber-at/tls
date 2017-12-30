@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <ctype.h>
 #include "options.h"
 #include "hashmap.h"
 
@@ -45,6 +46,12 @@ typedef struct {
     char *send_buffer2;
     int send_buffer2_size;
     int send_buffer2_len;
+    char *cert_file;
+    char *ciphers;
+    char *dh_file;
+    char *ca_file;
+    long options;
+    char *sni_error;
 } state_t;
 
 static int ssl_index;
@@ -57,7 +64,7 @@ typedef unsigned __int32 uint32_t;
 #define SSL_OP_NO_TICKET 0
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined LIBRESSL_VERSION_NUMBER
 #define DH_set0_pqg(dh, dh_p, param, dh_g) (dh)->p = dh_p; (dh)->g = dh_g
 #define our_alloc enif_alloc
 #define our_realloc enif_realloc
@@ -100,9 +107,11 @@ static int set_option_flag(const unsigned char *opt, size_t len, long *flag) {
 }
 
 hashmap_t *certs_map;
+hashmap_t *certfiles_map;
 
 typedef struct {
     char *key;
+    char *file;
     time_t key_mtime;
     time_t dh_mtime;
     time_t ca_mtime;
@@ -159,6 +168,8 @@ static void destroy_tls_state(ErlNifEnv *env, void *data) {
             enif_free(state->send_buffer);
         if (state->send_buffer2)
             enif_free(state->send_buffer2);
+	if (state->cert_file)
+	    enif_free(state->cert_file);
         memset(state, 0, sizeof(state_t));
     }
 }
@@ -328,6 +339,7 @@ static int load(ErlNifEnv *env, void **priv, ERL_NIF_TERM load_info) {
     CRYPTO_THREADID_set_callback(thread_id_callback);
 
     certs_map = hashmap_new(16, sizeof(cert_info_t), cert_hash, cert_cmp, cert_free);
+    certfiles_map = hashmap_new(16, sizeof(cert_info_t), cert_hash, cert_cmp, cert_free);
 
     ssl_index = SSL_get_ex_new_index(0, "ssl index", NULL, NULL, NULL);
     ErlNifResourceFlags flags = ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER;
@@ -344,10 +356,11 @@ static void unload(ErlNifEnv *env, void *priv) {
     hashmap_free(err_string_map);
 #endif
     hashmap_free(certs_map);
+    hashmap_free(certfiles_map);
 
     for (i = 0; i < CRYPTO_num_locks(); i++)
         enif_mutex_destroy(mtx_buf[i]);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER
     OPENSSL_cleanup();
 #endif
 }
@@ -489,6 +502,69 @@ static void ssl_info_callback(const SSL *s, int where, int ret) {
     }
 }
 
+static char *create_ssl_for_cert(char *, state_t *);
+
+static cert_info_t *lookup_certfile_no_lock(const char *domain) {
+  cert_info_t *ret = NULL;
+  cert_info_t *info = NULL;
+
+  if (domain) {
+    size_t len = strlen(domain);
+    if (len) {
+      char *name = enif_alloc(len+1);
+      size_t i = 0;
+      if (name) {
+	name[len] = 0;
+	for (i=0; i<len; i++)
+	  name[i] = tolower(domain[i]);
+	info = hashmap_lookup_no_lock(certfiles_map, &name);
+	if (info && info->file)
+	  ret = info;
+	else {
+	  /* Replace the first domain part with '*' and retry */
+	  char *dot = strchr(name, '.');
+	  if (dot != NULL && dot != name) {
+	    char *glob = dot - 1;
+	    glob[0] = '*';
+	    info = hashmap_lookup_no_lock(certfiles_map, &glob);
+	    if (info && info->file)
+	      ret = info;
+	  }
+	}
+	enif_free(name);
+      }
+    }
+  }
+  return ret;
+}
+
+static int ssl_sni_callback(const SSL *s, int *foo, void *data) {
+  cert_info_t *info = NULL;
+  char *err_str = NULL;
+  const char *servername = NULL;
+  int ret = SSL_TLSEXT_ERR_OK;
+  state_t *state = (state_t *) SSL_get_ex_data(s, ssl_index);
+
+  servername = SSL_get_servername(s, TLSEXT_NAMETYPE_host_name);
+  hashmap_lock(certfiles_map, 0);
+  info = lookup_certfile_no_lock(servername);
+  if (info) {
+    if (strcmp(info->file, state->cert_file))
+      err_str = create_ssl_for_cert(info->file, state);
+    if (err_str) {
+      state->sni_error = err_str;
+      ret = SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+  } else if (strlen(state->cert_file) == 0) {
+    state->sni_error =
+      "Failed to find a certificate matching the domain in SNI extension";
+    ret = SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+  hashmap_unlock(certfiles_map, 0);
+
+  return ret;
+}
+
 #define ERR_T(T) enif_make_tuple2(env, enif_make_atom(env, "error"), T)
 #define OK_T(T) enif_make_tuple2(env, enif_make_atom(env, "ok"), T)
 #define SEND_T(T) enif_make_tuple2(env, enif_make_atom(env, "send"), T)
@@ -518,27 +594,54 @@ static ERL_NIF_TERM ssl_error(ErlNifEnv *env, const char *errstr) {
     return ERR_T(enif_make_binary(env, &err));
 }
 
-static char *create_ssl_for_cert(char *key_file, char *ciphers, char *dh_file,
-                                 char *ca_file, char *key, SSL **retval) {
-    hashmap_lock(certs_map, 0);
+static char *mk_hash_key(char *cert_file, state_t *state) {
+  char *ciphers = state->ciphers;
+  char *dh_file = state->dh_file;
+  char *ca_file = state->ca_file;
+  long options = state->options;
 
+  char *key = enif_alloc(strlen(cert_file) + strlen(ciphers) + 8 +
+			 strlen(dh_file) + strlen(ca_file) + 1);
+
+  if (key)
+    sprintf(key, "%s%s%08lx%s%s", cert_file, ciphers,
+            options, dh_file, ca_file);
+
+  return key;
+}
+
+static char *create_ssl_for_cert(char *cert_file, state_t *state) {
+    char *ciphers = state->ciphers;
+    char *dh_file = state->dh_file;
+    char *ca_file = state->ca_file;
+
+    int res = 0;
     cert_info_t info, old_info;
-    info.key = key;
+    char *key = mk_hash_key(cert_file, state);
+    if (!key)
+      return "enif_alloc() failed";
+
+    hashmap_lock(certs_map, 0);
 
     cert_info_t *tmp = hashmap_lookup_no_lock(certs_map, &key);
 
     if (tmp)
         info = *tmp;
     else {
+        info.key = key;
         info.ssl_ctx = NULL;
         info.key_mtime = 0;
         info.dh_mtime = 0;
         info.ca_mtime = 0;
+	info.file = NULL;
     }
 
     time_t key_mtime = info.key_mtime;
     time_t dh_mtime = info.dh_mtime;
     time_t ca_mtime = info.ca_mtime;
+
+    if (strlen(cert_file) == 0)
+        cert_file = NULL;
 
     if (strlen(dh_file) == 0)
         dh_file = NULL;
@@ -546,7 +649,7 @@ static char *create_ssl_for_cert(char *key_file, char *ciphers, char *dh_file,
     if (strlen(ca_file) == 0)
         ca_file = NULL;
 
-    if (is_modified(key_file, &key_mtime) ||
+    if (is_modified(cert_file, &key_mtime) ||
         is_modified(dh_file, &dh_mtime) ||
         is_modified(ca_file, &ca_mtime) ||
         info.ssl_ctx == NULL) {
@@ -568,23 +671,27 @@ static char *create_ssl_for_cert(char *key_file, char *ciphers, char *dh_file,
                 return "SSL_CTX_new failed";
             }
 
-            int res = SSL_CTX_use_certificate_chain_file(ctx, key_file);
-            if (res <= 0) {
+	    if (cert_file) {
+	      res = SSL_CTX_use_certificate_chain_file(ctx, cert_file);
+	      if (res <= 0) {
                 hashmap_unlock(certs_map, 1);
                 return "SSL_CTX_use_certificate_file failed";
-            }
+	      }
 
-            res = SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM);
-            if (res <= 0) {
+	      res = SSL_CTX_use_PrivateKey_file(ctx, cert_file, SSL_FILETYPE_PEM);
+	      if (res <= 0) {
                 hashmap_unlock(certs_map, 1);
                 return "SSL_CTX_use_PrivateKey_file failed";
-            }
+	      }
 
-            res = SSL_CTX_check_private_key(ctx);
-            if (res <= 0) {
+	      res = SSL_CTX_check_private_key(ctx);
+	      if (res <= 0) {
                 hashmap_unlock(certs_map, 1);
                 return "SSL_CTX_check_private_key failed";
-            }
+	      }
+	    }
+
+	    SSL_CTX_set_tlsext_servername_callback(ctx, &ssl_sni_callback);
 
             if (ciphers[0] == 0)
                 SSL_CTX_set_cipher_list(ctx, CIPHERS);
@@ -626,28 +733,35 @@ static char *create_ssl_for_cert(char *key_file, char *ciphers, char *dh_file,
 
             SSL_CTX_set_info_callback(ctx, &ssl_info_callback);
 
-            size_t len = strlen(key) + 1;
-
             info.key_mtime = key_mtime;
             info.dh_mtime = dh_mtime;
             info.ca_mtime = ca_mtime;
             info.ssl_ctx = ctx;
-            info.key = enif_alloc(len);
-            memcpy(info.key, key, len);
             int hres = hashmap_insert_no_lock(certs_map, &info, &old_info);
             if (hres < 0) {
                 enif_free(info.key);
             } else if (hres) {
                 enif_free(old_info.key);
             }
-            *retval = SSL_new(ctx);
+	    if (state->ssl)
+	      SSL_set_SSL_CTX(state->ssl, ctx);
+	    else
+	      state->ssl = SSL_new(ctx);
         } else {
-            *retval = SSL_new(info.ssl_ctx);
+	    enif_free(key);
+	    if (state->ssl)
+	      SSL_set_SSL_CTX(state->ssl, info.ssl_ctx);
+	    else
+	      state->ssl = SSL_new(info.ssl_ctx);
         }
 
         hashmap_unlock(certs_map, 1);
     } else {
-        *retval = SSL_new(info.ssl_ctx);
+        enif_free(key);
+        if (state->ssl)
+	  SSL_set_SSL_CTX(state->ssl, info.ssl_ctx);
+	else
+	  state->ssl = SSL_new(info.ssl_ctx);
         hashmap_unlock(certs_map, 0);
     }
     return NULL;
@@ -658,7 +772,7 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
     unsigned int command;
     unsigned int flags;
     char *cert_file = NULL, *ciphers = NULL;
-    char *dh_file = NULL, *hash_key = NULL, *ca_file = NULL;
+    char *dh_file = NULL, *ca_file = NULL;
     char *sni = NULL;
     ErlNifBinary ciphers_bin;
     ErlNifBinary certfile_bin;
@@ -709,14 +823,12 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
     }
 
     cert_file = enif_alloc(certfile_bin.size + 1 +
-        ciphers_bin.size + 1 +
-        dhfile_bin.size + 1 +
-        cafile_bin.size + 1 +
-        certfile_bin.size + ciphers_bin.size + 8 + dhfile_bin.size + cafile_bin.size + 1);
+			   ciphers_bin.size + 1 +
+			   dhfile_bin.size + 1 +
+			   cafile_bin.size + 1);
     ciphers = cert_file + certfile_bin.size + 1;
     dh_file = ciphers + ciphers_bin.size + 1;
     ca_file = dh_file + dhfile_bin.size + 1;
-    hash_key = ca_file + cafile_bin.size + 1;
     if (!cert_file) {
         enif_free(cert_file);
         return enif_make_badarg(env);
@@ -745,11 +857,13 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
     ca_file[cafile_bin.size] = 0;
     memcpy(sni, sni_bin.data, sni_bin.size);
 
-    sprintf(hash_key, "%s%s%08lx%s%s", cert_file, ciphers,
-            options, dh_file, ca_file);
+    state->cert_file = cert_file;
+    state->ciphers = ciphers;
+    state->dh_file = dh_file;
+    state->ca_file = ca_file;
+    state->options = options;
 
-    char *err_str = create_ssl_for_cert(cert_file, ciphers, dh_file,
-                                        ca_file, hash_key, &state->ssl);
+    char *err_str = create_ssl_for_cert(cert_file, state);
     if (err_str) {
         enif_free(cert_file);
 	enif_free(sni);
@@ -798,7 +912,6 @@ static ERL_NIF_TERM open_nif(ErlNifEnv *env, int argc,
         SSL_set_connect_state(state->ssl);
     }
 
-    enif_free(cert_file);
     enif_free(sni);
     ERL_NIF_TERM result = enif_make_resource(env, state);
     enif_release_resource(state);
@@ -1034,7 +1147,18 @@ static ERL_NIF_TERM get_decrypted_input_nif(ErlNifEnv *env, int argc,
         if (res <= 0) {
             if (SSL_get_error(state->ssl, res) != SSL_ERROR_WANT_READ) {
                 enif_mutex_unlock(state->mtx);
-                return ssl_error(env, "SSL_do_handshake failed");
+		int reason = ERR_GET_REASON(ERR_peek_error());
+		if (reason == SSL_R_DATA_LENGTH_TOO_LONG ||
+		    reason == SSL_R_PACKET_LENGTH_TOO_LONG ||
+		    reason == SSL_R_UNKNOWN_PROTOCOL ||
+		    reason == SSL_R_UNEXPECTED_MESSAGE ||
+		    reason == SSL_R_WRONG_VERSION_NUMBER)
+		  /* Do not report badly formed Client Hello */
+		  return ERR_T(enif_make_atom(env, "closed"));
+		else if (state->sni_error)
+		  return ssl_error(env, state->sni_error);
+		else
+		  return ssl_error(env, "SSL_do_handshake failed");
             }
         }
     }
@@ -1100,6 +1224,105 @@ static ERL_NIF_TERM get_decrypted_input_nif(ErlNifEnv *env, int argc,
                         : SEND_T(enif_make_binary(env, &output));
 }
 
+static ERL_NIF_TERM add_certfile_nif(ErlNifEnv *env, int argc,
+				     const ERL_NIF_TERM argv[]) {
+  ErlNifBinary domain, file;
+  cert_info_t info, old_info;
+  memset(&info, 0, sizeof(cert_info_t));
+  memset(&old_info, 0, sizeof(cert_info_t));
+
+  if (!enif_inspect_iolist_as_binary(env, argv[0], &domain))
+    return enif_make_badarg(env);
+  if (!enif_inspect_iolist_as_binary(env, argv[1], &file))
+    return enif_make_badarg(env);
+
+  info.key = enif_alloc(domain.size+1);
+  info.file = enif_alloc(file.size+1);
+  if (info.key && info.file) {
+    memcpy(info.key, domain.data, domain.size);
+    memcpy(info.file, file.data, file.size);
+    info.key[domain.size] = 0;
+    info.file[file.size] = 0;
+    hashmap_lock(certfiles_map, 1);
+    int hres = hashmap_insert_no_lock(certfiles_map, &info, &old_info);
+    if (hres < 0) {
+      enif_free(info.key);
+      enif_free(info.file);
+    } else if (hres) {
+      enif_free(old_info.key);
+      enif_free(old_info.file);
+    }
+    hashmap_unlock(certfiles_map, 1);
+  } else {
+    enif_free(info.key);
+    enif_free(info.file);
+  }
+
+  return enif_make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM delete_certfile_nif(ErlNifEnv *env, int argc,
+					const ERL_NIF_TERM argv[]) {
+  ErlNifBinary domain;
+  char *ret = "false";
+  char *key;
+  cert_info_t old_info;
+  memset(&old_info, 0, sizeof(cert_info_t));
+
+  if (!enif_inspect_iolist_as_binary(env, argv[0], &domain))
+    return enif_make_badarg(env);
+
+  key = enif_alloc(domain.size+1);
+  if (key) {
+    memcpy(key, domain.data, domain.size);
+    key[domain.size] = 0;
+    hashmap_lock(certfiles_map, 1);
+    int hres = hashmap_remove_no_lock(certfiles_map, &key, &old_info);
+    if (hres) {
+      enif_free(old_info.key);
+      enif_free(old_info.file);
+      ret = "true";
+    }
+    hashmap_unlock(certfiles_map, 1);
+  }
+
+  return enif_make_atom(env, ret);
+}
+
+static ERL_NIF_TERM get_certfile_nif(ErlNifEnv *env, int argc,
+				     const ERL_NIF_TERM argv[]) {
+  ErlNifBinary domain;
+  char *key = NULL;
+  cert_info_t *info = NULL;
+  ERL_NIF_TERM file, result;
+
+  if (!enif_inspect_iolist_as_binary(env, argv[0], &domain))
+    return enif_make_badarg(env);
+
+  key = enif_alloc(domain.size+1);
+  if (key) {
+    memcpy(key, domain.data, domain.size);
+    key[domain.size] = 0;
+    hashmap_lock(certfiles_map, 0);
+    info = lookup_certfile_no_lock(key);
+    if (info) {
+      unsigned char *tmp = enif_make_new_binary(env, strlen(info->file), &file);
+      if (tmp) {
+	memcpy(tmp, info->file, strlen(info->file));
+	result = enif_make_tuple2(env, enif_make_atom(env, "ok"), file);
+      } else
+	result = enif_make_atom(env, "error");
+    } else {
+      result = enif_make_atom(env, "error");
+    }
+    hashmap_unlock(certfiles_map, 0);
+  } else {
+    result = enif_make_atom(env, "error");
+  }
+
+  return result;
+}
+
 static ERL_NIF_TERM invalidate_nif(ErlNifEnv *env, int argc,
                                    const ERL_NIF_TERM argv[]) {
     state_t *state = NULL;
@@ -1128,6 +1351,9 @@ static ErlNifFunc nif_funcs[] =
                 {"get_encrypted_output_nif", 1, get_encrypted_output_nif},
                 {"get_verify_result_nif",    1, get_verify_result_nif},
                 {"get_peer_certificate_nif", 1, get_peer_certificate_nif},
+		{"add_certfile_nif",         2, add_certfile_nif},
+		{"delete_certfile_nif",      1, delete_certfile_nif},
+		{"get_certfile_nif",         1, get_certfile_nif},
                 {"invalidate_nif",           1, invalidate_nif}
         };
 

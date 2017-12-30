@@ -1,3 +1,11 @@
+# Version 1.0.18
+
+* Do not report badly formed Client Hello as a TLS error
+* Report meaningful error when SNI callback fails
+* Add Server Name Indication support for server connections
+* Libressl only offer pre 1.1 api even if it present version > 1.1
+* Fix crash on Mac OS X High Sierra due to replacement of system OpenSSL with BoringSSL
+
 # Version 1.0.17
 
 * Fix case clause introduced after migration to NIF
