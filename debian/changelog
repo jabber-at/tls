@@ -1,6 +1,7 @@
 erlang-p1-tls (1.0.18-0.1) unstable; urgency=medium
 
   * New upstream release.
+  * Tighten erlang dependency to >=1:17.5.
 
  -- Mathias Ertl <mati@jabber.at>  Sat, 30 Dec 2017 15:44:19 +0100
 
