@@ -1,3 +1,9 @@
+erlang-p1-tls (1.0.18-0.2) unstable; urgency=medium
+
+  * Add two patches from upstream to fix memory leaks.
+
+ -- Mathias Ertl <mati@jabber.at>  Mon, 01 Jan 2018 20:53:02 +0100
+
 erlang-p1-tls (1.0.18-0.1) unstable; urgency=medium
 
   * New upstream release.
