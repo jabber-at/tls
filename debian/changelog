@@ -1,6 +1,7 @@
 erlang-p1-tls (1.0.20-0.1) unstable; urgency=medium
 
   * New upstream release.
+  * Remove patches applied upstream.
 
  -- Mathias Ertl <mati@jabber.at>  Fri, 12 Jan 2018 23:02:47 +0100
 
