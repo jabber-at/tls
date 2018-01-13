@@ -1,2 +1,3 @@
 source: maintainer-upload-has-incorrect-version-number
 source: unknown-field-in-dsc orig-maintainer
+source: binary-nmu-debian-revision-in-source
