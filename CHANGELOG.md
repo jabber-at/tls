@@ -1,3 +1,8 @@
+# Version 1.0.21
+
+* Updating p1_utils to version 1.0.11.
+* Fix compilation with rebar3 
+
 # Version 1.0.20
 
 * Include uthash.h in hex package
