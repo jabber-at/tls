@@ -1,3 +1,9 @@
+erlang-p1-tls (1.0.23-1.1) unstable; urgency=medium
+
+  * New upstream version 1.0.23
+
+ -- Mathias Ertl <mati@pallene.htu.tuwien.ac.at>  Sat, 25 Aug 2018 17:29:59 +0200
+
 erlang-p1-tls (1.0.22-0.1) unstable; urgency=medium
 
   * New upstream release.
