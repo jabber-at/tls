@@ -3,11 +3,11 @@ Maintainer: Mathias Ertl <mati@jabber.at>
 XSBC-Orig-Maintainer: Philipp Huebner <debalance@debian.org>
 Section: libs
 Priority: optional
-Build-Depends: debhelper (>= 9), 
+Build-Depends: debhelper (>= 11~),
                dh-rebar,
-               erlang-base (>= 1:17.5),
+               erlang-base (>= 1:19.2),
                erlang-eunit,
-               erlang-p1-utils (>= 1.0.11),
+               erlang-p1-utils (>= 1.0.12),
                erlang-syntax-tools,
                libssl-dev
 Standards-Version: 4.1.4
@@ -19,9 +19,9 @@ Package: erlang-p1-tls
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         erlang-base (>= 1:17.5) | ${erlang-abi:Depends},
+         erlang-base (>= 1:19.2) | ${erlang-abi:Depends},
          ${erlang:Depends},
-         erlang-p1-utils (>= 1.0.11)
+         erlang-p1-utils (>= 1.0.12)
 Description: native TLS / SSL driver for Erlang / Elixir
  Fast TSL is a native TLS / SSL driver for Erlang / Elixir.
  It is based on OpenSSL, a proven and efficient TLS implementation.
