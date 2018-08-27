@@ -1,19 +1,8 @@
 diff --git a/c_src/fast_tls.c b/c_src/fast_tls.c
-index b46dfb1..40b7d89 100644
+index b46dfb1..5ceb907 100644
 --- a/c_src/fast_tls.c
 +++ b/c_src/fast_tls.c
-@@ -69,6 +69,10 @@ typedef unsigned __int32 uint32_t;
- #define DH_set0_pqg(dh, dh_p, param, dh_g) (dh)->p = dh_p; (dh)->g = dh_g
- #endif
- 
-+#if OPENSSL_VERSION_NUMBER < 0x10200000L
-+#define SSL_is_server(s) (s)->server
-+#endif
-+
- void __free(void *ptr, size_t size) {
-     enif_free(ptr);
- }
-@@ -384,9 +388,7 @@ static int setup_dh(SSL_CTX *ctx, char *dh_file) {
+@@ -384,9 +384,7 @@ static int setup_dh(SSL_CTX *ctx, char *dh_file) {
  
  static void ssl_info_callback(const SSL *s, int where, int ret) {
      state_t *d = (state_t *) SSL_get_ex_data(s, ssl_index);
@@ -24,7 +13,7 @@ index b46dfb1..40b7d89 100644
          d->handshakes++;
      }
  }
-@@ -1046,7 +1048,8 @@ static ERL_NIF_TERM get_decrypted_input_nif(ErlNifEnv *env, int argc,
+@@ -1046,7 +1044,8 @@ static ERL_NIF_TERM get_decrypted_input_nif(ErlNifEnv *env, int argc,
              }
          }
  
