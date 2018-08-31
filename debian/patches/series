@@ -1,2 +1,2 @@
 remove-deps.diff
-openssl_1.1.diff
+openssl-1.1.1.patch
