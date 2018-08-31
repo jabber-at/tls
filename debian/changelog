@@ -1,10 +1,11 @@
 erlang-p1-tls (1.0.23-1.1) unstable; urgency=medium
 
   * New upstream version 1.0.23
+  * Update Standards-Version to 4.2.0 (no changes needed)
+  * Added support for OpenSSL 1.1.1 (Closes: #907055)
   * Added debian/upstream/metadata
   * Switched to debhelper 11
   * Set Maintainer: Ejabberd Packaging Team <ejabberd@packages.debian.org>
-  * Add openssl_1.1.diff to fix compilation with OpenSSL 1.1.
 
  -- Mathias Ertl <mati@pallene.htu.tuwien.ac.at>  Sat, 25 Aug 2018 17:29:59 +0200
 
