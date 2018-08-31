@@ -1,9 +1,8 @@
-Description: Fix issues with OpenSSL 1.1
- This patch fixes multiple issues with OpenSSL 1.1. This patch is nothing but
- the diff between 1.0.23 and upstream commit
- d8c5a714d15b7ab2615e548d214d3eb7670c718b.
-Author: Mathias Ertl <mati@jabber.at>
-Origin: upstream,
+Description: add support for OpenSSL 1.1.1
+ This is a combination of upstream patches adding support for
+ OpenSSL 1.1.1.
+Author: Paweł Chmielowski
+Origin: upstream
 Bug: https://github.com/processone/fast_tls/issues/36
 Applied-Upstream: 1.0.24
 Last-Update: 2018-08-27
