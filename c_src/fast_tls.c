@@ -69,6 +69,10 @@ typedef unsigned __int32 uint32_t;
 #define DH_set0_pqg(dh, dh_p, param, dh_g) (dh)->p = dh_p; (dh)->g = dh_g
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x10002000L
+#define SSL_is_server(s) (s)->server
+#endif
+
 void __free(void *ptr, size_t size) {
     enif_free(ptr);
 }
@@ -384,9 +388,7 @@ static int setup_dh(SSL_CTX *ctx, char *dh_file) {
 
 static void ssl_info_callback(const SSL *s, int where, int ret) {
     state_t *d = (state_t *) SSL_get_ex_data(s, ssl_index);
-    if ((where & SSL_CB_HANDSHAKE_START) && d->handshakes) {
-        d->handshakes++;
-    } else if ((where & SSL_CB_HANDSHAKE_DONE) && !d->handshakes) {
+    if ((where & SSL_CB_HANDSHAKE_START)) {
         d->handshakes++;
     }
 }
@@ -1046,7 +1048,8 @@ static ERL_NIF_TERM get_decrypted_input_nif(ErlNifEnv *env, int argc,
             }
         }
 
-        if (state->handshakes > 1) {
+        if (state->handshakes > 1 && SSL_is_server(state->ssl) &&
+            !SSL_get_secure_renegotiation_support(state->ssl)) {
             enif_release_binary(&output);
             char *error = "client renegotiations forbidden";
             enif_mutex_unlock(state->mtx);

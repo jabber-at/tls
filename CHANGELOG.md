@@ -1,3 +1,12 @@
+# Version 1.0.25
+
+* Updating p1_utils to version 1.0.13.
+
+# Version 1.0.24
+
+* Updating p1_utils to version 6ff85e8.
+* Add support for tls 1.1.1 and tls1.3
+
 # Version 1.0.23
 
 * Updating p1_utils to version 1.0.12.
